@@ -1,0 +1,35 @@
+language: python
+python:
+  - "3.6"
+
+# command to install dependencies
+install:
+  - pip install -r requirements.txt
+
+# command to run tests
+script:
+  - export FILES="$(git diff --name-only $TRAVIS_COMMIT_RANGE)"
+  - cd /home/travis/build/OccamsRazorResearch
+  - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams mnist_basic_no_dropout
+  
+  - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar_lenet
+  - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar_lenet_weight
+  - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar_lenet_trgtd_weight
+  - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar_lenet_unit
+  - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar_lenet_trgtd_unit
+  
+  - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar10_resnet32
+  - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar10_resnet32_weight
+  - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar10_resnet32_trgtd_weight
+  - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar10_resnet32_unit
+  - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar10_resnet32_trgtd_unit
+  
+  - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar100_vgg16_no_dropout
+  - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar100_vgg16_weight
+  - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar100_vgg16_trgtd_weight
+  - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar100_vgg16_unit
+  - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar100_vgg16_trgtd_unit
+
+# Notifications for slack
+notifications:
+    slack: forai:ldlxL4yRruD0O3FokzTknYb0
