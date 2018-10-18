@@ -9,7 +9,7 @@ install:
 # command to run tests
 script:
   - export FILES="$(git diff --name-only $TRAVIS_COMMIT_RANGE)"
-  - cd /home/travis/build/OccamsRazorResearch
+  - cd /home/travis/build/for-ai
   - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams mnist_basic_no_dropout
   
   - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar_lenet
@@ -29,7 +29,3 @@ script:
   - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar100_vgg16_trgtd_weight
   - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar100_vgg16_unit
   - python3 -m codebase.train --eval_steps 1 --eval_every 1 --train_steps 1 --env local --hparams cifar100_vgg16_trgtd_unit
-
-# Notifications for slack
-notifications:
-    slack: forai:ldlxL4yRruD0O3FokzTknYb0
