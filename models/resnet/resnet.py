@@ -178,22 +178,8 @@ def get_resnet(hparams, lr):
             onehot_labels=labels, logits=logits)
         cost = tf.reduce_mean(xent, name='xent')
         if is_training:
-          if hparams.dropout_type and "variational" not in hparams.dropout_type:
+          if not hparams.dropout_type or "variational" not in hparams.dropout_type:
             cost += model_utils.weight_decay(hparams)
-
-          if hparams.logit_packing:
-            negativity_cost, axis_alignedness_cost, logit_bound = model_utils.axis_aligned_cost(
-                logits, hparams)
-            cost += hparams.logit_packing * tf.reduce_mean(
-                negativity_cost + axis_alignedness_cost + 20. * logit_bound)
-
-          if hparams.logit_squeezing:
-            cost += hparams.logit_squeezing * tf.reduce_mean(logits**2)
-
-          if hparams.clp:
-            cost += hparams.clp * tf.reduce_mean(
-                (logits[:hparams.batch_size // 2] -
-                 logits[hparams.batch_size // 2:])**2)
 
           tf.summary.scalar("avg_logit",
                             tf.reduce_mean(tf.reduce_max(tf.abs(logits), -1)))
