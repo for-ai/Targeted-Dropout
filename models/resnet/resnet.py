@@ -178,7 +178,7 @@ def get_resnet(hparams, lr):
             onehot_labels=labels, logits=logits)
         cost = tf.reduce_mean(xent, name='xent')
         if is_training:
-          if hparams.dropout_type and "variational" in hparams.dropout_type:
+          if hparams.dropout_type and "variational" not in hparams.dropout_type:
             cost += model_utils.weight_decay(hparams)
 
           if hparams.logit_packing:
