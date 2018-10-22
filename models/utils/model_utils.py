@@ -158,7 +158,7 @@ def weight_decay(hparams, only_features=True):
   for v in var_list:
     # Weight decay.
     is_feature = "DW" in v.name or "kernel" in v.name
-    if not (skip_biases and is_bias):
+    if not (only_features and is_feature):
       v_loss = tf.nn.l2_loss(v)
       weight_decays.append(v_loss)
 
