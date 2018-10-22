@@ -145,7 +145,7 @@ def weight_noise(hparams, learning_rate):
   return noise_ops
 
 
-def weight_decay(hparams, skip_biases=True):
+def weight_decay(hparams, only_features=True):
   """Apply weight decay to vars in var_list."""
   if not hparams.weight_decay_rate:
     return 0.
@@ -157,8 +157,7 @@ def weight_decay(hparams, skip_biases=True):
   weight_decays = []
   for v in var_list:
     # Weight decay.
-    # This is a heuristic way to detect biases that works for main tf.layers.
-    is_bias = len(v.shape.as_list()) == 1 and v.name.endswith("bias:0")
+    is_feature = "DW" in v.name or "kernel" in v.name
     if not (skip_biases and is_bias):
       v_loss = tf.nn.l2_loss(v)
       weight_decays.append(v_loss)
