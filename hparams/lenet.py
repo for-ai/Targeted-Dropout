@@ -67,15 +67,6 @@ def cifar_lenet_unit():
 
 
 @register
-def cifar_lenet_unit_fixed():
-  hps = cifar_lenet_no_dropout()
-  hps.drop_rate = 0.25
-  hps.dropout_type = "untargeted_unit"
-  hps.fixed = True
-  return hps
-
-
-@register
 def cifar_lenet_trgtd_unit():
   hps = cifar_lenet_no_dropout()
   hps.drop_rate = 0.5
@@ -148,7 +139,7 @@ def cifar_lenet_trgtd_weight_botk75_66():
 
 
 @register
-def cifar_lenet_louizos_weight():
+def cifar_lenet_louizos_weight_1en3():
   hps = cifar_lenet_no_dropout()
   hps.louizos_beta = 2. / 3.
   hps.louizos_zeta = 1.1
@@ -160,7 +151,7 @@ def cifar_lenet_louizos_weight():
 
 
 @register
-def cifar_lenet_louizos_weight_1():
+def cifar_lenet_louizos_weight_1en1():
   hps = cifar_lenet_no_dropout()
   hps.louizos_beta = 2. / 3.
   hps.louizos_zeta = 1.1
@@ -172,7 +163,7 @@ def cifar_lenet_louizos_weight_1():
 
 
 @register
-def cifar_lenet_louizos_weight_2():
+def cifar_lenet_louizos_weight_1en2():
   hps = cifar_lenet_no_dropout()
   hps.louizos_beta = 2. / 3.
   hps.louizos_zeta = 1.1
@@ -184,7 +175,7 @@ def cifar_lenet_louizos_weight_2():
 
 
 @register
-def cifar_lenet_louizos_weight_3():
+def cifar_lenet_louizos_weight_5en3():
   hps = cifar_lenet_no_dropout()
   hps.louizos_beta = 2. / 3.
   hps.louizos_zeta = 1.1
@@ -196,7 +187,7 @@ def cifar_lenet_louizos_weight_3():
 
 
 @register
-def cifar_lenet_louizos_weight_4():
+def cifar_lenet_louizos_weight_1en4():
   hps = cifar_lenet_no_dropout()
   hps.louizos_beta = 2. / 3.
   hps.louizos_zeta = 1.1
@@ -208,7 +199,7 @@ def cifar_lenet_louizos_weight_4():
 
 
 @register
-def cifar_lenet_louizos_unit():
+def cifar_lenet_louizos_unit_1en3():
   hps = cifar_lenet_no_dropout()
   hps.louizos_beta = 2. / 3.
   hps.louizos_zeta = 1.1
@@ -220,7 +211,7 @@ def cifar_lenet_louizos_unit():
 
 
 @register
-def cifar_lenet_louizos_unit_1():
+def cifar_lenet_louizos_unit_1en1():
   hps = cifar_lenet_no_dropout()
   hps.louizos_beta = 2. / 3.
   hps.louizos_zeta = 1.1
@@ -232,7 +223,7 @@ def cifar_lenet_louizos_unit_1():
 
 
 @register
-def cifar_lenet_louizos_unit_2():
+def cifar_lenet_louizos_unit_1en2():
   hps = cifar_lenet_no_dropout()
   hps.louizos_beta = 2. / 3.
   hps.louizos_zeta = 1.1
@@ -244,7 +235,7 @@ def cifar_lenet_louizos_unit_2():
 
 
 @register
-def cifar_lenet_louizos_unit_3():
+def cifar_lenet_louizos_unit_5en3():
   hps = cifar_lenet_no_dropout()
   hps.louizos_beta = 2. / 3.
   hps.louizos_zeta = 1.1
@@ -256,7 +247,7 @@ def cifar_lenet_louizos_unit_3():
 
 
 @register
-def cifar_lenet_louizos_unit_4():
+def cifar_lenet_louizos_unit_1en4():
   hps = cifar_lenet_no_dropout()
   hps.louizos_beta = 2. / 3.
   hps.louizos_zeta = 1.1

@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 
 _DROPOUTS = dict()
@@ -17,27 +18,27 @@ def get_dropout(name):
   return _DROPOUTS[name]
 
 
+
 @register("targeted_weight")
 def targeted_weight_dropout(w, params, is_training):
   drop_rate = params.drop_rate
-  targ_rate = params.targ_rate
+  targ_perc = params.targ_rate
 
   w_shape = w.shape
   w = tf.reshape(w, [-1, w_shape[-1]])
   norm = tf.abs(w)
-  idx = tf.to_int32(targ_rate * tf.to_float(tf.shape(w)[0]))
+  idx = tf.to_int32(targ_perc * tf.to_float(tf.shape(w)[0]))
   threshold = tf.contrib.framework.sort(norm, axis=0)[idx]
   mask = norm < threshold[None, :]
 
   if not is_training:
-    w = (1 - tf.to_float(mask)) * w
+    w = (1. - tf.to_float(mask)) * w
     w = tf.reshape(w, w_shape)
     return w
 
-  mask = tf.where(
-      tf.logical_and((1. - drop_rate) < tf.random_uniform(tf.shape(w)), mask),
-      tf.ones_like(w, dtype=tf.float32), tf.zeros_like(w, dtype=tf.float32))
-  w = (1 - mask) * w
+  mask = tf.to_float(
+      tf.logical_and(tf.random_uniform(tf.shape(w)) < drop_rate, mask))
+  w = (1. - mask) * w
   w = tf.reshape(w, w_shape)
   return w
 
@@ -45,47 +46,83 @@ def targeted_weight_dropout(w, params, is_training):
 @register("targeted_weight_random")
 def targeted_weight_random(w, params, is_training):
   drop_rate = params.drop_rate
-  targ_rate = params.targ_rate
+  targ_perc = params.targ_rate
 
   w_shape = w.shape
   w = tf.reshape(w, [-1, w_shape[-1]])
 
-  switch = tf.Variable(
-      tf.random_uniform(tf.shape(w)), name="mask", trainable=False)
-  targeted_mask = tf.where((1. - targ_rate) < switch,
-                           tf.ones_like(w, dtype=tf.float32),
-                           tf.zeros_like(w, dtype=tf.float32))
-  targeted_weights = tf.random_uniform(tf.shape(w)) * targeted_mask
-  mask = tf.where((1. - drop_rate) < targeted_weights,
-                  tf.ones_like(w, dtype=tf.float32),
-                  tf.zeros_like(w, dtype=tf.float32))
+  switch = tf.get_variable(
+      "mask",
+      w.shape,
+      initializer=tf.random_uniform_initializer(),
+      trainable=False)
 
+  if is_training:
+    mask = tf.logical_and(switch < targ_perc,
+                          tf.random_uniform(w.shape) < drop_rate)
+  else:
+    mask = switch < targ_perc
+
+  mask = 1. - tf.to_float(mask)
   mask = tf.stop_gradient(mask)
 
-  w = (1 - mask) * w
+  w = mask * w
+  w = tf.reshape(w, w_shape)
+  return w
+
+
+@register("ramping_targeted_weight_random")
+def ramping_targeted_weight_random(w, params, is_training):
+  drop_rate = params.drop_rate
+  targ_perc = 0.95 * params.targ_rate * tf.minimum(
+      1.0,
+      tf.to_float(tf.train.get_global_step()) / 20000.)
+  targ_perc = targ_perc + 0.05 * params.targ_rate * tf.maximum(
+      0.0,
+      tf.minimum(1.0,
+                 (tf.to_float(tf.train.get_global_step()) - 20000.) / 20000.))
+
+  w_shape = w.shape
+  w = tf.reshape(w, [-1, w_shape[-1]])
+
+  switch = tf.get_variable(
+      "mask",
+      w.shape,
+      initializer=tf.random_uniform_initializer(),
+      trainable=False)
+
+  if is_training:
+    mask = tf.logical_and(switch < targ_perc,
+                          tf.random_uniform(w.shape) < drop_rate)
+  else:
+    mask = switch < (targ_perc * drop_rate)
+
+  mask = 1. - tf.to_float(mask)
+  mask = tf.stop_gradient(mask)
+
+  w = mask * w
   w = tf.reshape(w, w_shape)
   return w
 
 
 @register("targeted_weight_piecewise")
 def targeted_weight_piecewise_dropout(w, params, is_training):
-  drop_rate = params.drop_rate
+  drop_rate = params.drop_rate * tf.minimum(
+      1.0,
+      tf.to_float(tf.train.get_global_step()) / 40000.)
 
-  train_percent_20k = tf.minimum(
+  targ_perc = 0.95 * params.targ_rate * tf.minimum(
       1.0,
       tf.to_float(tf.train.get_global_step()) / 20000.)
-  train_percent_40k = tf.minimum(
-      1.0, (tf.to_float(tf.train.get_global_step()) - 20000.) / 20000.)
-
-  targ_rate = tf.cond(
-      tf.less(tf.train.get_global_step(),
-              20000), lambda: train_percent_20k * 0.95,
-      lambda: 0.95 + train_percent_40k * (0.04 + params.td_nines))
+  targ_perc = targ_perc + 0.05 * params.targ_rate * tf.maximum(
+      0.0,
+      tf.minimum(1.0,
+                 (tf.to_float(tf.train.get_global_step()) - 20000.) / 20000.))
 
   w_shape = w.shape
   w = tf.reshape(w, [-1, w_shape[-1]])
   norm = tf.abs(w)
-  idx = tf.to_int32(targ_rate * tf.to_float(tf.shape(w)[0]))
+  idx = tf.to_int32(targ_perc * tf.to_float(tf.shape(w)[0]))
   threshold = tf.contrib.framework.sort(norm, axis=0)[idx]
   mask = norm < threshold[None, :]
 
@@ -103,23 +140,22 @@ def targeted_weight_piecewise_dropout(w, params, is_training):
 
 @register("targeted_unit_piecewise")
 def targeted_unit_piecewise(w, params, is_training):
+  drop_rate = params.drop_rate * tf.minimum(
+      1.0,
+      tf.to_float(tf.train.get_global_step()) / 40000.)
 
-  train_percent_20k = tf.minimum(
+  targ_perc = 0.95 * params.targ_rate * tf.minimum(
       1.0,
       tf.to_float(tf.train.get_global_step()) / 20000.)
-  train_percent_40k = tf.minimum(
-      1.0, (tf.to_float(tf.train.get_global_step()) - 20000.) / 20000.)
-
-  drop_rate = params.drop_rate
-  targ_rate = tf.cond(
-      tf.less(tf.train.get_global_step(),
-              20000), lambda: train_percent_20k * 0.8,
-      lambda: 0.8 + train_percent_40k * (0.1 + params.td_nines))
+  targ_perc = targ_perc + 0.05 * params.targ_rate * tf.maximum(
+      0.0,
+      tf.minimum(1.0,
+                 (tf.to_float(tf.train.get_global_step()) - 20000.) / 20000.))
 
   w_shape = w.shape
   w = tf.reshape(w, [-1, w.shape[-1]])
   norm = tf.norm(w, axis=0)
-  idx = tf.to_int32(targ_rate * tf.to_float(w.shape[1]))
+  idx = tf.to_int32(targ_perc * tf.to_float(w.shape[1]))
   sorted_norms = tf.contrib.framework.sort(norm)
   threshold = sorted_norms[idx]
   mask = (norm < threshold)[None, :]
@@ -139,36 +175,35 @@ def targeted_unit_piecewise(w, params, is_training):
 @register("delayed_targeted_weight_prune")
 def delayed_targeted_weight(w, params, is_training):
   orig_w = w
-  targ_rate = params.targ_rate
+  targ_perc = params.targ_rate
 
   w_shape = w.shape
   w = tf.reshape(w, [-1, w_shape[-1]])
   norm = tf.abs(w)
-  idx = tf.to_int32(targ_rate * tf.to_float(tf.shape(w)[0]))
+  idx = tf.to_int32(targ_perc * tf.to_float(tf.shape(w)[0]))
   threshold = tf.contrib.framework.sort(norm, axis=0)[idx]
-  mask = norm < threshold[None, :]
+  mask = norm >= threshold[None, :]
 
-  w = w * (1 - tf.to_float(mask))
-  return tf.cond(
-      tf.greater(tf.train.get_global_step(), params.dropout_delay_steps),
-      lambda: tf.reshape(w, w_shape), lambda: orig_w)
+  w = w * tf.to_float(mask)
+  cond = tf.to_float(tf.train.get_global_step() >= params.dropout_delay_steps)
+  return cond * tf.reshape(w, w_shape) + (1 - cond) * orig_w
 
 
 @register("delayed_targeted_unit_prune")
 def delayed_targeted_unit(x, params, is_training):
   orig_x = x
-  targ_rate = params.targ_rate
 
   w = tf.reshape(x, [-1, x.shape[-1]])
   norm = tf.norm(w, axis=0)
-  idx = int(targ_rate * int(w.shape[1]))
+  idx = int(params.targ_rate * int(w.shape[1]))
   sorted_norms = tf.contrib.framework.sort(norm)
   threshold = sorted_norms[idx]
-  mask = (norm < threshold)[None, :]
+  mask = (norm >= threshold)[None, None]
 
+  w = w * tf.to_float(mask)
   return tf.cond(
       tf.greater(tf.train.get_global_step(), params.dropout_delay_steps),
-      lambda: tf.reshape((1 - tf.to_float(mask)) * w, x.shape), lambda: orig_x)
+      lambda: tf.reshape(w, x.shape), lambda: orig_x)
 
 
 @register("untargeted_weight")
@@ -197,26 +232,30 @@ def targeted_unit_dropout(x, params, is_training):
 
 
 @register("targeted_unit_random")
-def targeted_unit_random(x, params, is_training):
+def targeted_unit_random(w, params, is_training):
   drop_rate = params.drop_rate
-  targ_rate = params.targ_rate
+  targ_perc = params.targ_rate
 
-  w = tf.reshape(x, [-1, x.shape[-1]])
+  w_shape = w.shape
+  w = tf.reshape(w, [-1, w_shape[-1]])
 
-  switch = tf.Variable(
-      tf.random_uniform(tf.shape(w)), name="mask", trainable=False)
-  targeted_mask = tf.where((1. - targ_rate) < switch,
-                           tf.ones_like(w, dtype=tf.float32),
-                           tf.zeros_like(w, dtype=tf.float32))
-  targeted_weights = tf.random_uniform(tf.shape(w)) * targeted_mask
-  mask = tf.where((1. - drop_rate) < targeted_weights,
-                  tf.ones_like(w, dtype=tf.float32),
-                  tf.zeros_like(w, dtype=tf.float32))
+  switch = tf.get_variable(
+      "mask",
+      w.shape[-1],
+      initializer=tf.random_uniform_initializer(),
+      trainable=False)
 
-  mask = tf.stop_gradient(mask)
+  if is_training:
+    mask = tf.logical_and(switch < targ_perc,
+                          tf.random_uniform(switch.shape) < drop_rate)
+  else:
+    mask = switch < targ_perc
 
-  w = (1 - mask) * w
-  w = tf.reshape(w, x.shape)
+  mask = 1. - tf.to_float(mask)
+  mask = tf.stop_gradient(mask[None, :])
+
+  w = mask * w
+  w = tf.reshape(w, w_shape)
   return w
 
 
@@ -259,7 +298,7 @@ def louizos_weight_dropout(w, params, is_training):
   with tf.variable_scope("louizos"):
     EPS = 1e-8
     noise = (1 - EPS) * tf.random_uniform(w.shape) + (EPS / 2)
-    rate = tf.log(1 - params.drop_rate) - tf.log(params.drop_rate)
+    rate = np.log(1 - params.drop_rate) - np.log(params.drop_rate)
     gates = tf.get_variable(
         "gates",
         shape=w.shape,
@@ -284,7 +323,7 @@ def louizos_unit_dropout(w, params, is_training):
     EPS = 1e-8
     noise = (1 - EPS) * \
         tf.random_uniform([w.shape.as_list()[-1]]) + (EPS / 2)
-    rate = tf.log(1 - params.drop_rate) - tf.log(params.drop_rate)
+    rate = np.log(1 - params.drop_rate) - np.log(params.drop_rate)
     gates = tf.get_variable(
         "gates",
         shape=[w.shape.as_list()[-1]],
@@ -326,6 +365,13 @@ def clip(x):
   return tf.clip_by_value(x, -8., 8.)
 
 
+def dkl_qp(log_alpha):
+  k1, k2, k3 = 0.63576, 1.8732, 1.48695
+  C = -k1
+  mdkl = k1 * tf.nn.sigmoid(k2 + k3 * log_alpha) - 0.5 * tf.log1p(
+      tf.exp(-log_alpha)) + C
+  return -tf.reduce_sum(mdkl)
+
 
 @register("variational")
 def variational_dropout(w, _, is_training):
@@ -357,16 +403,24 @@ def variational_unit_dropout(w, _, is_training):
 
 @register("smallify_dropout")
 def smallify_dropout(x, hparams, is_training):
-  with tf.variable_scope("smallify"):
+  with tf.variable_scope("smallify", reuse=tf.AUTO_REUSE):
     switch = tf.get_variable(
         "switch",
         shape=[1] * (len(x.shape) - 1) + [x.shape[-1]],
         initializer=tf.random_uniform_initializer())
 
-    mask = tf.Variable(tf.ones_like(switch), name="mask", trainable=False)
-    exp_avg = tf.Variable(tf.sign(switch), name="exp_avg", trainable=False)
-    exp_std = tf.Variable(
-        tf.zeros_like(switch), name="exp_std", trainable=False)
+    mask = tf.get_variable(
+        initializer=lambda: tf.ones_like(switch.initialized_value()),
+        name="mask",
+        trainable=False)
+    exp_avg = tf.get_variable(
+        initializer=lambda: tf.sign(switch.initialized_value()),
+        name="exp_avg",
+        trainable=False)
+    exp_std = tf.get_variable(
+        initializer=lambda: tf.zeros_like(switch.initialized_value()),
+        name="exp_std",
+        trainable=False)
     gates = switch * mask
 
     batch_sign = tf.sign(switch)
@@ -379,10 +433,12 @@ def smallify_dropout(x, hparams, is_training):
 
     with tf.control_dependencies([
         tf.assign(mask, mask * new_mask),
-        tf.assign(exp_std, hparams.smallify_mv * exp_std +
-                  (1 - hparams.smallify_mv) * diff**2),
-        tf.assign(exp_avg, hparams.smallify_mv * exp_avg +
-                  (1 - hparams.smallify_mv) * batch_sign)
+        tf.assign(
+            exp_std, hparams.smallify_mv * exp_std +
+            (1 - hparams.smallify_mv) * diff**2),
+        tf.assign(
+            exp_avg, hparams.smallify_mv * exp_avg +
+            (1 - hparams.smallify_mv) * batch_sign)
     ]):
       return tf.identity(x * gates, name="smallified")
 
@@ -393,10 +449,18 @@ def smallify_weight_dropout(x, hparams, is_training):
     switch = tf.get_variable(
         "switch", shape=x.shape, initializer=tf.random_uniform_initializer())
 
-    mask = tf.Variable(tf.ones_like(switch), name="mask", trainable=False)
-    exp_avg = tf.Variable(tf.sign(switch), name="exp_avg", trainable=False)
-    exp_std = tf.Variable(
-        tf.zeros_like(switch), name="exp_std", trainable=False)
+    mask = tf.get_variable(
+        initializer=lambda: tf.ones_like(switch.initialized_value()),
+        name="mask",
+        trainable=False)
+    exp_avg = tf.get_variable(
+        initializer=lambda: tf.sign(switch.initialized_value()),
+        name="exp_avg",
+        trainable=False)
+    exp_std = tf.get_variable(
+        initializer=lambda: tf.zeros_like(switch.initialized_value()),
+        name="exp_std",
+        trainable=False)
     gates = switch * mask
 
     batch_sign = tf.sign(switch)
@@ -409,9 +473,11 @@ def smallify_weight_dropout(x, hparams, is_training):
 
     with tf.control_dependencies([
         tf.assign(mask, mask * new_mask),
-        tf.assign(exp_std, hparams.smallify_mv * exp_std +
-                  (1 - hparams.smallify_mv) * diff**2),
-        tf.assign(exp_avg, hparams.smallify_mv * exp_avg +
-                  (1 - hparams.smallify_mv) * batch_sign)
+        tf.assign(
+            exp_std, hparams.smallify_mv * exp_std +
+            (1 - hparams.smallify_mv) * diff**2),
+        tf.assign(
+            exp_avg, hparams.smallify_mv * exp_avg +
+            (1 - hparams.smallify_mv) * batch_sign)
     ]):
       return tf.identity(x * gates, name="smallified")

@@ -34,7 +34,6 @@ def cifar10_vgg16():
 def cifar100_vgg16_no_dropout():
   hps = vgg16_default()
   hps.data = "cifar100"
-  hps.data_augmentations = ["image_augmentation"]
 
   hps.input_shape = [32, 32, 3]
   hps.output_shape = [100]
@@ -48,7 +47,6 @@ def cifar100_vgg16_no_dropout():
 def cifar10_vgg16_no_dropout():
   hps = vgg16_default()
   hps.data = "cifar10"
-  hps.data_augmentations = ["image_augmentation"]
 
   hps.input_shape = [32, 32, 3]
   hps.output_shape = [10]
@@ -59,15 +57,7 @@ def cifar10_vgg16_no_dropout():
 
 
 @register
-def cifar100_vgg16_weight():
-  hps = cifar100_vgg16_no_dropout()
-  hps.drop_rate = 0.5
-  hps.dropout_type = "untargeted_weight"
-  return hps
-
-
-@register
-def cifar100_vgg16_trgtd_weight():
+def cifar100_vgg16_targeted_dropout():
   hps = cifar100_vgg16_no_dropout()
   hps.drop_rate = 0.5
   hps.dropout_type = "targeted_weight"
@@ -76,15 +66,23 @@ def cifar100_vgg16_trgtd_weight():
 
 
 @register
-def cifar100_vgg16_unit():
+def cifar100_vgg16_untargeted_dropout():
   hps = cifar100_vgg16_no_dropout()
-  hps.drop_rate = 0.5
+  hps.drop_rate = 0.25
+  hps.dropout_type = "untargeted_weight"
+  return hps
+
+
+@register
+def cifar100_vgg16_untargeted_unit_dropout():
+  hps = cifar100_vgg16_no_dropout()
+  hps.drop_rate = 0.25
   hps.dropout_type = "untargeted_unit"
   return hps
 
 
 @register
-def cifar100_vgg16_trgtd_unit():
+def cifar100_vgg16_targeted_unit_dropout():
   hps = cifar100_vgg16_no_dropout()
   hps.drop_rate = 0.5
   hps.dropout_type = "targeted_unit"
@@ -93,8 +91,8 @@ def cifar100_vgg16_trgtd_unit():
 
 
 @register
-def cifar100_vgg16_trgtd_unit_botk75_66():
-  hps = cifar100_vgg16_trgtd_unit()
+def cifar100_vgg16_targeted_unit_dropout_botk75_66():
+  hps = cifar100_vgg16_targeted_unit_dropout()
   hps.drop_rate = 0.66
   hps.targ_rate = 0.75
   return hps
