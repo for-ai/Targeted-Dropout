@@ -20,8 +20,6 @@ def init_flags():
   tf.flags.DEFINE_string("data_dir", None, "The data directory.")
   tf.flags.DEFINE_integer("train_steps", 10000,
                           "Number of training steps to perform.")
-  tf.flags.DEFINE_integer("eval_steps", 100,
-                          "Number of evaluation steps to perform.")
   tf.flags.DEFINE_integer("eval_every", 1000,
                           "Number of steps between evaluations.")
   tf.flags.DEFINE_string(
@@ -29,7 +27,7 @@ def init_flags():
       "folder of the weights, if not set defaults to output_dir")
   tf.flags.DEFINE_string("prune_percent", "0.5",
                          "percent of weights to prune, comma separated")
-  tf.flags.DEFINE_string("prune", "one_shot", "one_shot or fisher")
+  tf.flags.DEFINE_string("prune", "weight", "one_shot or fisher")
   tf.flags.DEFINE_boolean("variational", False, "use evaluate")
   tf.flags.DEFINE_string("eval_file", "eval_prune_results",
                          "file to put results")
