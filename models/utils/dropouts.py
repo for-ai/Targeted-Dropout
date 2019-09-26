@@ -223,6 +223,12 @@ def targeted_unit_dropout(x, params, is_training):
   mask = (norm < threshold)[None, :]
   mask = tf.tile(mask, [w.shape[0], 1])
 
+  if not is_training:
+    w = (1. - tf.to_float(mask)) * w
+    w = tf.reshape(w, x.shape)
+    return w
+
+  
   mask = tf.where(
       tf.logical_and((1. - params.drop_rate) < tf.random_uniform(tf.shape(w)),
                      mask), tf.ones_like(w, dtype=tf.float32),
